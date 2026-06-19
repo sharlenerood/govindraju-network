@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Govindraju Network</title>
+<style>
+  @font-face {
+    font-family: 'Spec';
+    src: local('Arial Narrow');
+  }
+
+  :root {
+    --bg: #0a0e14;
+    --panel: #131a24;
+    --panel-border: #232f40;
+    --ink: #c9d2de;
+    --ink-dim: #6b7888;
+    --ink-bright: #f0f3f7;
+    --red: #c41e3a;
+    --red-glow: rgba(196, 30, 58, 0.45);
+    --gold: #d4af37;
+    --line: #2a3544;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse at 50% 35%, rgba(40, 54, 74, 0.55) 0%, transparent 60%),
+      var(--bg);
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- HEADER ---------- */
+  header {
+    flex: 0 0 auto;
+    padding: 22px 32px 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--panel-border);
+    z-index: 20;
+    position: relative;
+  }
+
+  .title-block .eyebrow {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .title-block h1 {
+    font-family: 'Arial Narrow', 'Helvetica Neue', sans-serif;
+    font-weight: 800;
+    font-size: clamp(22px, 3.2vw, 34px);
+    letter-spacing: 0.01em;
+    color: var(--ink-bright);
+    text-transform: uppercase;
+    line-height: 1.05;
+  }
+
+  .title-block .sub {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--ink-dim);
+    max-width: 520px;
+    line-height: 1.45;
+  }
+
+  .stat-strip {
+    display: flex;
+    gap: 28px;
+    text-align: right;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat .num {
+    font-family: 'Courier New', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat .lbl {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-top: 2px;
+  }
+
+  /* ---------- MAIN AREA ---------- */
+  .main {
+    flex: 1 1 auto;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .graph-wrap {
+    flex: 1 1 auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  svg#graph {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+  }
+  svg#graph.dragging { cursor: grabbing; }
+
+  .edge {
+    stroke-width: 1;
+    fill: none;
+    opacity: 0.35;
+    transition: opacity 0.2s, stroke-width 0.2s;
+  }
+  .edge.dim { opacity: 0.06; }
+  .edge.lit { opacity: 0.9; stroke-width: 1.6; }
+
+  .center-node circle.ring {
+    fill: none;
+    stroke: var(--red);
+    stroke-width: 1;
+    opacity: 0.5;
+  }
+  .center-node circle.pulse {
+    fill: none;
+    stroke: var(--red);
+    stroke-width: 1.5;
+    opacity: 0;
+    transform-origin: center;
+    animation: pulse 2.8s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+
+  .center-node .photo-clip-bg {
+    fill: #1a2332;
+  }
+
+  .center-node text.center-label {
+    font-family: 'Arial Narrow', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    fill: var(--ink-bright);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-anchor: middle;
+  }
+  .center-node text.center-sub {
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    fill: var(--red);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    text-anchor: middle;
+  }
+
+  .director-node circle {
+    fill: var(--panel);
+    stroke-width: 2;
+    transition: filter 0.2s;
+  }
+  .director-node text {
+    font-family: 'Courier New', monospace;
+    font-size: 9.5px;
+    fill: var(--ink);
+    text-anchor: middle;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+  }
+
+  .entity-node { cursor: pointer; }
+  .entity-node circle.halo {
+    fill: none;
+    stroke-width: 0;
+    opacity: 0;
+    transition: opacity 0.2s, stroke-width 0.2s;
+  }
+  .entity-node:hover circle.halo {
+    opacity: 0.35;
+    stroke-width: 8;
+  }
+  .entity-node circle.core {
+    stroke: rgba(0,0,0,0.4);
+    stroke-width: 1;
+    transition: r 0.15s, filter 0.15s;
+  }
+  .entity-node:hover circle.core {
+    filter: brightness(1.3);
+  }
+  .entity-node.selected circle.core {
+    stroke: var(--ink-bright);
+    stroke-width: 2;
+  }
+  .entity-node text {
+    font-family: Arial, sans-serif;
+    font-size: 8.5px;
+    fill: var(--ink-dim);
+    text-anchor: middle;
+    pointer-events: none;
+    transition: fill 0.15s;
+  }
+  .entity-node:hover text, .entity-node.selected text {
+    fill: var(--ink-bright);
+  }
+
+  .node-dim { opacity: 0.22; }
+
+  /* ---------- TOOLTIP ---------- */
+  #tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(10, 14, 20, 0.95);
+    border: 1px solid var(--panel-border);
+    border-left: 3px solid var(--red);
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--ink-bright);
+    border-radius: 2px;
+    z-index: 50;
+    display: none;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  #tooltip .tt-name { font-weight: 700; margin-bottom: 2px; }
+  #tooltip .tt-dir { color: var(--ink-dim); font-size: 10.5px; }
+  #tooltip .tt-amt { color: var(--gold); font-family: 'Courier New', monospace; font-size: 11px; margin-top: 3px; }
+
+  /* ---------- SIDE PANEL ---------- */
+  .side-panel {
+    flex: 0 0 360px;
+    background: var(--panel);
+    border-left: 1px solid var(--panel-border);
+    padding: 28px 26px;
+    overflow-y: auto;
+    transform: translateX(0);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .side-panel.empty { display: flex; align-items: center; justify-content: center; }
+  .side-panel.empty .empty-msg {
+    color: var(--ink-dim);
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.6;
+    max-width: 220px;
+  }
+  .side-panel.empty .empty-msg .arrow {
+    display: block;
+    font-size: 22px;
+    color: var(--ink-dim);
+    margin-bottom: 10px;
+  }
+
+  .panel-tag {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-bottom: 14px;
+  }
+
+  .panel-entity-name {
+    font-family: 'Arial Narrow', sans-serif;
+    font-weight: 800;
+    font-size: 24px;
+    text-transform: uppercase;
+    color: var(--ink-bright);
+    line-height: 1.1;
+    margin-bottom: 18px;
+  }
+
+  .panel-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .panel-row .k {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .panel-row .v {
+    font-size: 14px;
+    color: var(--ink-bright);
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .panel-section-label {
+    margin-top: 22px;
+    margin-bottom: 10px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  .payment-list { display: flex; flex-direction: column; gap: 8px; }
+  .payment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--panel-border);
+    border-radius: 3px;
+    padding: 9px 12px;
+  }
+  .payment-item .po {
+    font-family: 'Courier New', monospace;
+    font-size: 10.5px;
+    color: var(--ink-dim);
+  }
+  .payment-item .amt {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  .panel-total {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 2px solid var(--panel-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .panel-total .k {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .panel-total .v {
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--red);
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: none;
+    border: 1px solid var(--panel-border);
+    color: var(--ink-dim);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .close-btn:hover { color: var(--ink-bright); border-color: var(--ink-dim); }
+
+  /* ---------- LEGEND ---------- */
+  .legend {
+    position: absolute;
+    left: 28px;
+    bottom: 24px;
+    background: rgba(19, 26, 36, 0.88);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    z-index: 15;
+    max-width: 230px;
+  }
+  .legend-title {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 11.5px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .legend-item.muted { opacity: 0.35; }
+  .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+  }
+
+  /* ---------- CONTROLS ---------- */
+  .controls {
+    position: absolute;
+    right: 28px;
+    bottom: 24px;
+    display: flex;
+    gap: 8px;
+    z-index: 15;
+  }
+  .ctrl-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    background: rgba(19, 26, 36, 0.88);
+    border: 1px solid var(--panel-border);
+    color: var(--ink);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ctrl-btn:hover { color: var(--ink-bright); border-color: var(--ink-dim); }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 4px; }
+
+  /* ---------- VIEW TOGGLE (mobile only) ---------- */
+  .view-toggle {
+    display: none;
+    flex: 0 0 auto;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 3px;
+  }
+  .view-toggle button {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+  }
+  .view-toggle button.active {
+    background: var(--red);
+    color: var(--ink-bright);
+  }
+
+  /* ---------- LIST VIEW ---------- */
+  .list-view {
+    display: none;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 16px 16px 32px;
+  }
+  .list-group { margin-bottom: 18px; }
+  .list-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    margin-bottom: 8px;
+  }
+  .list-group-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto;
+  }
+  .list-group-name {
+    font-family: 'Courier New', monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-bright);
+  }
+  .list-group-count {
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-left: auto;
+  }
+  .list-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-left-width: 3px;
+    border-radius: 4px;
+    padding: 13px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .list-card:active { background: #1a2332; }
+  .list-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-bright);
+    line-height: 1.25;
+  }
+  .list-card-meta {
+    font-size: 11.5px;
+    color: var(--ink-dim);
+    margin-top: 2px;
+  }
+  .list-card-amt {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  /* ---------- BOTTOM SHEET (mobile) ---------- */
+  .sheet-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 90;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .sheet-backdrop.show { display: block; opacity: 1; }
+
+  .bottom-sheet {
+    display: none;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    max-height: 82vh;
+    background: var(--panel);
+    border-top: 1px solid var(--panel-border);
+    border-radius: 16px 16px 0 0;
+    z-index: 95;
+    padding: 10px 22px 28px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow-y: auto;
+  }
+  .bottom-sheet.show { display: block; transform: translateY(0); }
+  .sheet-handle {
+    width: 36px; height: 4px;
+    background: var(--panel-border);
+    border-radius: 2px;
+    margin: 6px auto 16px;
+  }
+
+  /* ---------- RESPONSIVE BREAKPOINT ---------- */
+  @media (max-width: 860px) {
+    header {
+      padding: 16px 16px 12px;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .title-block h1 { font-size: 20px; }
+    .title-block .sub { display: none; }
+    .stat-strip { gap: 18px; align-self: flex-start; }
+    .stat .num { font-size: 17px; }
+
+    .view-toggle { display: flex; }
+
+    .side-panel { display: none; }
+    .legend { display: none; }
+
+    .main { flex-direction: column; }
+
+    svg#graph { cursor: default; }
+
+    .entity-node text { display: none; }
+    .entity-node:hover circle.halo { opacity: 0; stroke-width: 0; }
+
+    #tooltip { display: none !important; }
+  }
+
+  @media (min-width: 861px) {
+    .bottom-sheet, .sheet-backdrop { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <header>
+    <div class="title-block">
+      <div class="eyebrow">Investigation &mdash; Procurement Fraud</div>
+      <h1>The Govindraju Network</h1>
+      <div class="sub">Front companies, directors, and extracted payments linked to Stefan Govindraju. Click any company to see payment details.</div>
+    </div>
+    <div class="stat-strip">
+      <div class="stat">
+        <div class="num" id="statEntities">0</div>
+        <div class="lbl">Front entities</div>
+      </div>
+      <div class="stat">
+        <div class="num" id="statOrders">0</div>
+        <div class="lbl">Orders</div>
+      </div>
+      <div class="stat">
+        <div class="num" id="statTotal">R0</div>
+        <div class="lbl">Extracted</div>
+      </div>
+    </div>
+    <div class="view-toggle" id="viewToggle">
+      <button class="active" id="btnGraphView">Graph</button>
+      <button id="btnListView">List</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="graph-wrap" id="graphWrap">
+      <svg id="graph" viewBox="0 0 1000 800"></svg>
+      <div class="legend" id="legend">
+        <div class="legend-title">Front Directors</div>
+        <div id="legendList"></div>
+      </div>
+      <div class="controls">
+        <button class="ctrl-btn" id="zoomIn" title="Zoom in">+</button>
+        <button class="ctrl-btn" id="zoomOut" title="Zoom out">&minus;</button>
+        <button class="ctrl-btn" id="zoomReset" title="Reset view">&#8634;</button>
+      </div>
+    </div>
+
+    <div class="list-view" id="listView"></div>
+
+    <div class="side-panel empty" id="sidePanel">
+      <div class="empty-msg">
+        <span class="arrow">&larr;</span>
+        Click on a company in the network to view director, orders and payment details.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <div id="sheetContent"></div>
+</div>
+
+<script>
+// Network data extracted from source spreadsheet
+// Structure: each entity has a front director, order count, and array of individual payment amounts
+
+const DIRECTORS = [
+  { name: "Samendran Chin", color: "#d4af37" },
+  { name: "Christine Signarian", color: "#5fb4a2" },
+  { name: "Antionette le Roux", color: "#c47bc4" },
+  { name: "Kelvin Sills", color: "#e08a3c" },
+  { name: "Sydney Thindelo", color: "#6f9fe0" },
+  { name: "Thercia Isaacs", color: "#c41e3a" },
+  { name: "Meshan Govender", color: "#8bd66a" },
+];
+
+function dirColor(name) {
+  const d = DIRECTORS.find(d => d.name === name);
+  return d ? d.color : "#8b9bb4";
+}
+
+// Parse "495 000/494 000" style strings into number arrays (rands)
+function parseAmounts(str) {
+  return str
+    .split("/")
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .map(s => parseInt(s.replace(/[^\d]/g, ""), 10));
+}
+
+const RAW_ENTITIES = [
+  { name: "Fenella Frooti", director: "Samendran Chin", orders: 2, amounts: "495 000/494 000" },
+  { name: "Cora Maia", director: "Christine Signarian", orders: 3, amounts: "496 000/497 000/496 000" },
+  { name: "Brielle Rumi", director: "Antionette le Roux", orders: 2, amounts: "496 000/496 000" },
+  { name: "Mafaldaramp", director: "Samendran Chin", orders: 2, amounts: "496 500/495 000" },
+  { name: "Liralotte", director: "Kelvin Sills", orders: 2, amounts: "490 000/495 000" },
+  { name: "Umathora", director: "Kelvin Sills", orders: 3, amounts: "496 000/497 000/495 000" },
+  { name: "Maeve Adeline", director: "Christine Signarian", orders: 2, amounts: "495 000/497 500" },
+  { name: "Mae Freya", director: "Antionette le Roux", orders: 2, amounts: "493 000/494 000" },
+  { name: "Sogaki", director: "Sydney Thindelo", orders: 2, amounts: "496 000/490 000" },
+  { name: "Giso Wane", director: "Sydney Thindelo", orders: 2, amounts: "497 000/492 000" },
+  { name: "Kianakena", director: "Thercia Isaacs", orders: 2, amounts: "495 000/494 600" },
+  { name: "Wanthe", director: "Sydney Thindelo", orders: 2, amounts: "495 000/495 000" },
+  { name: "Cielchauncey", director: "Kelvin Sills", orders: 2, amounts: "492 500/492 000" },
+  { name: "Odapriya", director: "Thercia Isaacs", orders: 2, amounts: "490 000/496 000" },
+  { name: "Roguepalm", director: "Samendran Chin", orders: 1, amounts: "492 000" },
+  { name: "Terrastarla", director: "Kelvin Sills", orders: 1, amounts: "493 000/494 000" },
+  { name: "Sadie Ada", director: "Christine Signarian", orders: 2, amounts: "497 000/490 000" },
+  { name: "Callacora", director: "Thercia Isaacs", orders: 1, amounts: "492 000" },
+  { name: "Zabate", director: "Meshan Govender", orders: 1, amounts: "493 000" },
+  { name: "Cale Callum", director: "Christine Signarian", orders: 2, amounts: "495 000/495 000" },
+  { name: "Demobar", director: "Meshan Govender", orders: 1, amounts: "492 000" },
+  { name: "Addiynaria", director: "Thercia Isaacs", orders: 1, amounts: "494 000" },
+  { name: "Fleurnavy", director: "Kelvin Sills", orders: 1, amounts: "492 000" },
+  { name: "Caspian Dante", director: "Christine Signarian", orders: 1, amounts: "494 000" },
+  { name: "Stotleari", director: "Samendran Chin", orders: 1, amounts: "495 000" },
+  { name: "Maejan", director: "Sydney Thindelo", orders: 2, amounts: "492 000/496 000" },
+  { name: "Nora Eloise", director: "Antionette le Roux", orders: 1, amounts: "492 000" },
+  { name: "Gisoka Trading", director: "Sydney Thindelo", orders: 2, amounts: "492 000/493 000" },
+];
+
+const ENTITIES = RAW_ENTITIES.map((e, i) => {
+  const amounts = parseAmounts(e.amounts);
+  const total = amounts.reduce((a, b) => a + b, 0);
+  return {
+    id: "e" + i,
+    name: e.name,
+    director: e.director,
+    color: dirColor(e.director),
+    orderCount: e.orders,
+    amounts: amounts,
+    total: total,
+  };
+});
+
+const GRAND_TOTAL = ENTITIES.reduce((sum, e) => sum + e.total, 0);
+const TOTAL_ORDERS = ENTITIES.reduce((sum, e) => sum + e.orderCount, 0);
+</script>
+<script>
+(function() {
+  const W = 1000, H = 800;
+  const CX = W / 2, CY = H / 2;
+  const CENTER_R = 58;
+
+  const svg = document.getElementById('graph');
+  const tooltip = document.getElementById('tooltip');
+  const sidePanel = document.getElementById('sidePanel');
+  const legendList = document.getElementById('legendList');
+
+  const ns = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs) {
+    const e = document.createElementNS(ns, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // ---- Header stats ----
+  document.getElementById('statEntities').textContent = ENTITIES.length;
+  document.getElementById('statOrders').textContent = TOTAL_ORDERS;
+  document.getElementById('statTotal').textContent = 'R' + (GRAND_TOTAL / 1e6).toFixed(1) + 'm';
+
+  // ---- Layout: entities arranged in a ring around Stefan, grouped by director ----
+  // Group entities by director for cleaner angular clustering
+  const byDirector = {};
+  DIRECTORS.forEach(d => byDirector[d.name] = []);
+  ENTITIES.forEach(e => byDirector[e.director].push(e));
+
+  const RING_R = 300;
+  const NODE_MIN_R = 14, NODE_MAX_R = 26;
+  const maxTotal = Math.max(...ENTITIES.map(e => e.total));
+  const minTotal = Math.min(...ENTITIES.map(e => e.total));
+
+  function nodeRadius(total) {
+    if (maxTotal === minTotal) return (NODE_MIN_R + NODE_MAX_R) / 2;
+    const t = (total - minTotal) / (maxTotal - minTotal);
+    return NODE_MIN_R + t * (NODE_MAX_R - NODE_MIN_R);
+  }
+
+  // Assign angles: group by director with small gaps between groups
+  const order = [];
+  DIRECTORS.forEach(d => {
+    byDirector[d.name].forEach(e => order.push(e));
+  });
+  const n = order.length;
+  const gapPerGroup = 0.045; // radians gap between director clusters
+  let cursor = -Math.PI / 2; // start at top
+  const totalGapRadians = gapPerGroup * DIRECTORS.length;
+  const usable = (Math.PI * 2) - totalGapRadians;
+  const anglePerNode = usable / n;
+
+  let prevDirector = null;
+  order.forEach((e) => {
+    if (prevDirector !== null && prevDirector !== e.director) {
+      cursor += gapPerGroup;
+    }
+    e.angle = cursor + anglePerNode / 2;
+    cursor += anglePerNode;
+    prevDirector = e.director;
+  });
+
+  order.forEach(e => {
+    e.r = nodeRadius(e.total);
+    e.x = CX + Math.cos(e.angle) * RING_R;
+    e.y = CY + Math.sin(e.angle) * RING_R;
+  });
+
+  // Director "satellite" markers sit on the ring path between center and entities,
+  // positioned at the mean angle of their cluster, closer to center
+  const DIR_RING_R = 165;
+  const directorPos = {};
+  DIRECTORS.forEach(d => {
+    const members = byDirector[d.name];
+    if (members.length === 0) { directorPos[d.name] = null; return; }
+    const meanAngle = members.reduce((s, e) => s + e.angle, 0) / members.length;
+    directorPos[d.name] = {
+      x: CX + Math.cos(meanAngle) * DIR_RING_R,
+      y: CY + Math.sin(meanAngle) * DIR_RING_R,
+      angle: meanAngle,
+      name: d.name,
+      color: d.color,
+      count: members.length,
+    };
+  });
+
+  // ---- Build SVG layers ----
+  const gWorld = el('g', { id: 'world' });
+  const gEdges = el('g', { id: 'edges' });
+  const gDirectors = el('g', { id: 'directors' });
+  const gEntities = el('g', { id: 'entities' });
+  const gCenter = el('g', { id: 'center' });
+  gWorld.appendChild(gEdges);
+  gWorld.appendChild(gDirectors);
+  gWorld.appendChild(gEntities);
+  gWorld.appendChild(gCenter);
+  svg.appendChild(gWorld);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  // ---- Edges: center -> director -> entity ----
+  function curvePath(x1, y1, x2, y2) {
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    return `M ${x1} ${y1} Q ${mx} ${my} ${x2} ${y2}`;
+  }
+
+  DIRECTORS.forEach(d => {
+    const dp = directorPos[d.name];
+    if (!dp) return;
+    const path = el('path', {
+      class: 'edge edge-spine',
+      d: `M ${CX} ${CY} L ${dp.x} ${dp.y}`,
+      stroke: d.color,
+      'data-director': d.name,
+    });
+    gEdges.appendChild(path);
+  });
+
+  ENTITIES.forEach(e => {
+    const dp = directorPos[e.director];
+    const path = el('path', {
+      class: 'edge edge-leaf',
+      d: `M ${dp.x} ${dp.y} L ${e.x} ${e.y}`,
+      stroke: e.color,
+      'data-director': e.director,
+      'data-entity': e.id,
+    });
+    gEdges.appendChild(path);
+  });
+
+  // ---- Center node (Stefan) ----
+  // Place a photo named "stefan.jpg" in the same folder as this index.html.
+  // If it's missing or fails to load, the S.G. initials stay visible automatically.
+  const PHOTO_URL = "stefan.jpg";
+
+  const centerG = el('g', { class: 'center-node', transform: `translate(${CX}, ${CY})` });
+  centerG.appendChild(el('circle', { class: 'pulse', r: CENTER_R }));
+  centerG.appendChild(el('circle', { class: 'pulse', r: CENTER_R, style: 'animation-delay: 1.4s' }));
+  centerG.appendChild(el('circle', { class: 'ring', r: CENTER_R + 6 }));
+
+  const clipId = 'centerClip';
+  const defs = el('defs', {});
+  const clipPath = el('clipPath', { id: clipId });
+  clipPath.appendChild(el('circle', { r: CENTER_R, cx: 0, cy: 0 }));
+  defs.appendChild(clipPath);
+  svg.appendChild(defs);
+
+  centerG.appendChild(el('circle', { class: 'photo-clip-bg', r: CENTER_R }));
+  const photoImg = el('image', {
+    href: PHOTO_URL, x: -CENTER_R, y: -CENTER_R,
+    width: CENTER_R * 2, height: CENTER_R * 2,
+    'clip-path': `url(#${clipId})`, preserveAspectRatio: 'xMidYMid slice',
+  });
+  photoImg.setAttribute('id', 'stefanPhoto');
+  centerG.appendChild(photoImg);
+
+  // Fallback initials shown until a real photo is supplied (or if it fails to load)
+  const initials = el('text', { class: 'center-label', y: 4, id: 'centerInitials' });
+  initials.textContent = 'S.G.';
+  initials.style.fontSize = '22px';
+  centerG.appendChild(initials);
+
+  // Show photo only once it actually loads successfully; otherwise keep initials visible
+  photoImg.style.display = 'none';
+  photoImg.addEventListener('load', () => {
+    photoImg.style.display = '';
+    initials.style.display = 'none';
+  });
+  photoImg.addEventListener('error', () => {
+    photoImg.style.display = 'none';
+    initials.style.display = '';
+  });
+
+  const labelBg = el('text', { class: 'center-label', y: CENTER_R + 24 });
+  labelBg.textContent = 'STEFAN GOVINDRAJU';
+  const subLabel = el('text', { class: 'center-sub', y: CENTER_R + 38 });
+  subLabel.textContent = `${ENTITIES.length} ENTITIES \u00b7 ${DIRECTORS.length} DIRECTORS`;
+  centerG.appendChild(labelBg);
+  centerG.appendChild(subLabel);
+
+  gCenter.appendChild(centerG);
+
+  // ---- Director nodes ----
+  DIRECTORS.forEach(d => {
+    const dp = directorPos[d.name];
+    if (!dp) return;
+    const g = el('g', {
+      class: 'director-node', transform: `translate(${dp.x}, ${dp.y})`,
+      'data-director': d.name,
+    });
+    g.appendChild(el('circle', { r: 20, stroke: d.color }));
+    const t1 = el('text', { y: -2 });
+    const parts = d.name.split(' ');
+    t1.textContent = parts.map(p => p[0]).join('');
+    t1.style.fontSize = '11px';
+    t1.style.fontWeight = '800';
+    g.appendChild(t1);
+    const t2 = el('text', { y: 9 });
+    t2.textContent = dp.count + ' co.';
+    t2.style.fontSize = '7px';
+    t2.style.fill = 'var(--ink-dim)';
+    g.appendChild(t2);
+    gDirectors.appendChild(g);
+
+    g.addEventListener('mouseenter', () => highlightDirector(d.name));
+    g.addEventListener('mouseleave', () => clearHighlight());
+  });
+
+  // ---- Entity nodes ----
+  ENTITIES.forEach(e => {
+    const g = el('g', {
+      class: 'entity-node', transform: `translate(${e.x}, ${e.y})`,
+      'data-id': e.id, 'data-director': e.director,
+    });
+    g.appendChild(el('circle', { class: 'halo', r: e.r + 6, stroke: e.color }));
+    g.appendChild(el('circle', { class: 'core', r: e.r, fill: e.color }));
+
+    const label = el('text', { y: e.r + 11 });
+    label.textContent = e.name.length > 14 ? e.name.slice(0, 13) + '\u2026' : e.name;
+    g.appendChild(label);
+
+    gEntities.appendChild(g);
+
+    g.addEventListener('mouseenter', (ev) => {
+      highlightEntity(e);
+      showTooltip(ev, e);
+    });
+    g.addEventListener('mousemove', (ev) => positionTooltip(ev));
+    g.addEventListener('mouseleave', () => {
+      clearHighlight();
+      hideTooltip();
+    });
+    g.addEventListener('click', () => selectEntity(e));
+  });
+
+  // ---- Legend ----
+  DIRECTORS.forEach(d => {
+    const count = byDirector[d.name].length;
+    if (count === 0) return;
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.dataset.director = d.name;
+    item.innerHTML = `<span class="legend-dot" style="background:${d.color}"></span>${d.name} <span style="color:var(--ink-dim);margin-left:auto">${count}</span>`;
+    item.style.justifyContent = 'space-between';
+    legendList.appendChild(item);
+    item.addEventListener('mouseenter', () => highlightDirector(d.name));
+    item.addEventListener('mouseleave', () => clearHighlight());
+  });
+
+  // ---- Highlight logic ----
+  function clearHighlight() {
+    document.querySelectorAll('.entity-node').forEach(n => n.classList.remove('node-dim'));
+    document.querySelectorAll('.director-node').forEach(n => n.classList.remove('node-dim'));
+    document.querySelectorAll('.edge').forEach(n => { n.classList.remove('dim'); n.classList.remove('lit'); });
+    document.querySelectorAll('.legend-item').forEach(n => n.classList.remove('muted'));
+  }
+
+  function highlightDirector(name) {
+    document.querySelectorAll('.entity-node').forEach(n => {
+      n.classList.toggle('node-dim', n.dataset.director !== name);
+    });
+    document.querySelectorAll('.director-node').forEach(n => {
+      n.classList.toggle('node-dim', n.dataset.director !== name);
+    });
+    document.querySelectorAll('.edge').forEach(n => {
+      const match = n.dataset.director === name;
+      n.classList.toggle('lit', match);
+      n.classList.toggle('dim', !match);
+    });
+    document.querySelectorAll('.legend-item').forEach(n => {
+      n.classList.toggle('muted', n.dataset.director !== name);
+    });
+  }
+
+  function highlightEntity(e) {
+    document.querySelectorAll('.entity-node').forEach(n => {
+      n.classList.toggle('node-dim', n.dataset.id !== e.id);
+    });
+    document.querySelectorAll('.edge').forEach(n => {
+      const match = n.dataset.entity === e.id || (n.dataset.director === e.director && !n.dataset.entity);
+      n.classList.toggle('lit', n.dataset.entity === e.id);
+      n.classList.toggle('dim', n.dataset.entity && n.dataset.entity !== e.id);
+    });
+  }
+
+  // ---- Tooltip ----
+  function fmtRand(n) { return 'R' + n.toLocaleString('en-ZA'); }
+
+  function showTooltip(ev, e) {
+    tooltip.innerHTML = `
+      <div class="tt-name">${e.name}</div>
+      <div class="tt-dir">Director: ${e.director}</div>
+      <div class="tt-dir">${e.orderCount} order${e.orderCount > 1 ? 's' : ''}</div>
+      <div class="tt-amt">${fmtRand(e.total)} total</div>
+    `;
+    tooltip.style.display = 'block';
+    positionTooltip(ev);
+  }
+  function positionTooltip(ev) {
+    const wrap = document.querySelector('.graph-wrap').getBoundingClientRect();
+    let x = ev.clientX - wrap.left + 16;
+    let y = ev.clientY - wrap.top + 16;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+  function hideTooltip() { tooltip.style.display = 'none'; }
+
+  // ---- Shared detail content builder (used by side panel and bottom sheet) ----
+  function buildDetailHTML(e, includeCloseBtn) {
+    return `
+      ${includeCloseBtn ? '<button class="close-btn" id="closeBtn">&times;</button>' : ''}
+      <div class="panel-tag" style="background:${e.color}22; color:${e.color}; border:1px solid ${e.color}55;">FRONT ENTITY</div>
+      <div class="panel-entity-name">${e.name}</div>
+
+      <div class="panel-row">
+        <div class="k">Front Director</div>
+        <div class="v">${e.director}</div>
+      </div>
+      <div class="panel-row">
+        <div class="k">Orders Placed</div>
+        <div class="v">${e.orderCount}</div>
+      </div>
+      <div class="panel-row">
+        <div class="k">Avg per Order</div>
+        <div class="v">${fmtRand(Math.round(e.total / e.amounts.length))}</div>
+      </div>
+
+      <div class="panel-section-label">Payment Breakdown</div>
+      <div class="payment-list">
+        ${e.amounts.map((amt, i) => `
+          <div class="payment-item">
+            <span class="po">Order ${String(i + 1).padStart(2, '0')}</span>
+            <span class="amt">${fmtRand(amt)}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="panel-total">
+        <div class="k">Total Extracted</div>
+        <div class="v">${fmtRand(e.total)}</div>
+      </div>
+    `;
+  }
+
+  function isMobile() {
+    return window.matchMedia('(max-width: 860px)').matches;
+  }
+
+  // ---- Side panel (desktop) ----
+  function selectEntity(e) {
+    if (isMobile()) {
+      openSheet(e);
+      return;
+    }
+    document.querySelectorAll('.entity-node').forEach(n => n.classList.remove('selected'));
+    document.querySelector(`.entity-node[data-id="${e.id}"]`).classList.add('selected');
+
+    sidePanel.classList.remove('empty');
+    sidePanel.innerHTML = buildDetailHTML(e, true);
+    document.getElementById('closeBtn').addEventListener('click', deselect);
+  }
+
+  function deselect() {
+    document.querySelectorAll('.entity-node').forEach(n => n.classList.remove('selected'));
+    sidePanel.classList.add('empty');
+    sidePanel.innerHTML = `
+      <div class="empty-msg">
+        <span class="arrow">&larr;</span>
+        Click on a company in the network to view director, orders and payment details.
+      </div>
+    `;
+  }
+
+  // ---- Bottom sheet (mobile) ----
+  const bottomSheet = document.getElementById('bottomSheet');
+  const sheetBackdrop = document.getElementById('sheetBackdrop');
+  const sheetContent = document.getElementById('sheetContent');
+
+  function openSheet(e) {
+    document.querySelectorAll('.entity-node').forEach(n => n.classList.remove('selected'));
+    const node = document.querySelector(`.entity-node[data-id="${e.id}"]`);
+    if (node) node.classList.add('selected');
+
+    sheetContent.innerHTML = buildDetailHTML(e, false);
+    bottomSheet.classList.add('show');
+    sheetBackdrop.classList.add('show');
+  }
+  function closeSheet() {
+    bottomSheet.classList.remove('show');
+    sheetBackdrop.classList.remove('show');
+    document.querySelectorAll('.entity-node').forEach(n => n.classList.remove('selected'));
+  }
+  sheetBackdrop.addEventListener('click', closeSheet);
+
+  // Swipe-down-to-close on the sheet
+  let sheetDragStartY = null;
+  bottomSheet.addEventListener('touchstart', (ev) => {
+    sheetDragStartY = ev.touches[0].clientY;
+  }, { passive: true });
+  bottomSheet.addEventListener('touchmove', (ev) => {
+    if (sheetDragStartY === null) return;
+    const dy = ev.touches[0].clientY - sheetDragStartY;
+    if (dy > 80) {
+      closeSheet();
+      sheetDragStartY = null;
+    }
+  }, { passive: true });
+  bottomSheet.addEventListener('touchend', () => { sheetDragStartY = null; });
+
+  // ---- List view (mobile) ----
+  const listView = document.getElementById('listView');
+
+  function renderListView() {
+    let html = '';
+    DIRECTORS.forEach(d => {
+      const members = byDirector[d.name];
+      if (!members || members.length === 0) return;
+      html += `
+        <div class="list-group">
+          <div class="list-group-head">
+            <span class="list-group-dot" style="background:${d.color}"></span>
+            <span class="list-group-name">${d.name}</span>
+            <span class="list-group-count">${members.length} compan${members.length > 1 ? 'ies' : 'y'}</span>
+          </div>
+          ${members.map(e => `
+            <div class="list-card" style="border-left-color:${e.color}" data-id="${e.id}">
+              <div>
+                <div class="list-card-name">${e.name}</div>
+                <div class="list-card-meta">${e.orderCount} order${e.orderCount > 1 ? 's' : ''}</div>
+              </div>
+              <div class="list-card-amt">${fmtRand(e.total)}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    });
+    listView.innerHTML = html;
+
+    listView.querySelectorAll('.list-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const entity = ENTITIES.find(e => e.id === card.dataset.id);
+        if (entity) openSheet(entity);
+      });
+    });
+  }
+  renderListView();
+
+  // ---- View toggle (mobile) ----
+  const graphWrap = document.getElementById('graphWrap');
+  const btnGraphView = document.getElementById('btnGraphView');
+  const btnListView = document.getElementById('btnListView');
+
+  function setView(view) {
+    if (view === 'list') {
+      graphWrap.style.display = 'none';
+      listView.style.display = 'block';
+      btnGraphView.classList.remove('active');
+      btnListView.classList.add('active');
+    } else {
+      graphWrap.style.display = 'block';
+      listView.style.display = 'none';
+      btnGraphView.classList.add('active');
+      btnListView.classList.remove('active');
+    }
+  }
+  btnGraphView.addEventListener('click', () => setView('graph'));
+  btnListView.addEventListener('click', () => setView('list'));
+  setView('graph');
+
+  // ---- Pan & zoom ----
+  let viewBox = { x: 0, y: 0, w: W, h: H };
+  function applyViewBox() {
+    svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+  }
+
+  let isPanning = false, panStart = null, vbStart = null;
+  svg.addEventListener('mousedown', (ev) => {
+    if (ev.target.closest('.entity-node') || ev.target.closest('.director-node')) return;
+    isPanning = true;
+    svg.classList.add('dragging');
+    panStart = { x: ev.clientX, y: ev.clientY };
+    vbStart = { ...viewBox };
+  });
+  window.addEventListener('mousemove', (ev) => {
+    if (!isPanning) return;
+    const rect = svg.getBoundingClientRect();
+    const scale = viewBox.w / rect.width;
+    viewBox.x = vbStart.x - (ev.clientX - panStart.x) * scale;
+    viewBox.y = vbStart.y - (ev.clientY - panStart.y) * scale;
+    applyViewBox();
+  });
+  window.addEventListener('mouseup', () => { isPanning = false; svg.classList.remove('dragging'); });
+
+  function zoom(factor) {
+    const cx = viewBox.x + viewBox.w / 2;
+    const cy = viewBox.y + viewBox.h / 2;
+    const newW = Math.max(300, Math.min(2200, viewBox.w * factor));
+    const newH = newW * (H / W);
+    viewBox = { x: cx - newW / 2, y: cy - newH / 2, w: newW, h: newH };
+    applyViewBox();
+  }
+  document.getElementById('zoomIn').addEventListener('click', () => zoom(0.8));
+  document.getElementById('zoomOut').addEventListener('click', () => zoom(1.25));
+  document.getElementById('zoomReset').addEventListener('click', () => {
+    viewBox = { x: 0, y: 0, w: W, h: H };
+    applyViewBox();
+  });
+
+  svg.addEventListener('wheel', (ev) => {
+    ev.preventDefault();
+    zoom(ev.deltaY > 0 ? 1.08 : 0.93);
+  }, { passive: false });
+
+  // Click empty space to deselect
+  svg.addEventListener('click', (ev) => {
+    if (!ev.target.closest('.entity-node')) {
+      // only deselect on a true click, not end of drag
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
